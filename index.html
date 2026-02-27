@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GHOST PROTOCOL — Boo's Bounty Campaign</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0a0f;
+    --bg-card: #111118;
+    --bg-card-hover: #16161f;
+    --border: #1e1e2a;
+    --border-glow: #00ff8855;
+    --green: #00ff88;
+    --green-dim: #00ff8833;
+    --green-mid: #00ff8877;
+    --amber: #ffaa00;
+    --amber-dim: #ffaa0033;
+    --red: #ff3355;
+    --red-dim: #ff335533;
+    --cyan: #00ddff;
+    --cyan-dim: #00ddff33;
+    --text: #e0e0e8;
+    --text-dim: #6a6a7a;
+    --text-mid: #9a9aaa;
+    --purple: #aa66ff;
+    --purple-dim: #aa66ff33;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 136, 0.015) 2px,
+      rgba(0, 255, 136, 0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .noise {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Header */
+  .header {
+    padding: 40px 32px 20px;
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .codename {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--green);
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeIn 0.6s ease 0.2s forwards;
+  }
+
+  .title {
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin: 8px 0;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    animation: fadeIn 0.6s ease 0.4s forwards;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: var(--text-dim);
+    font-weight: 300;
+    opacity: 0;
+    animation: fadeIn 0.6s ease 0.6s forwards;
+  }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 20px 32px;
+    max-width: 900px;
+    margin: 0 auto;
+    opacity: 0;
+    animation: fadeIn 0.6s ease 0.8s forwards;
+  }
+
+  .stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 20px;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat.runway::before { background: var(--green); }
+  .stat.target::before { background: var(--amber); }
+  .stat.phase::before { background: var(--cyan); }
+
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  .stat.runway .stat-value { color: var(--green); }
+  .stat.target .stat-value { color: var(--amber); }
+  .stat.phase .stat-value { color: var(--cyan); }
+
+  /* Main content */
+  .content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 32px 60px;
+  }
+
+  /* Phase sections */
+  .phase-section {
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: slideUp 0.6s ease forwards;
+  }
+
+  .phase-section:nth-child(1) { animation-delay: 1.0s; }
+  .phase-section:nth-child(2) { animation-delay: 1.2s; }
+  .phase-section:nth-child(3) { animation-delay: 1.4s; }
+  .phase-section:nth-child(4) { animation-delay: 1.6s; }
+  .phase-section:nth-child(5) { animation-delay: 1.8s; }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .phase-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .phase-title-group {
+    flex: 1;
+  }
+
+  .phase-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .phase-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .phase-toggle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    color: var(--text-dim);
+    transition: transform 0.3s ease;
+    width: 28px;
+    text-align: center;
+  }
+
+  .phase-toggle.open { transform: rotate(90deg); }
+
+  /* Phase color themes */
+  .phase-section[data-phase="0"] .phase-icon { background: var(--green-dim); }
+  .phase-section[data-phase="0"] .phase-number { color: var(--green); }
+  .phase-section[data-phase="0"] .phase-title { color: var(--green); }
+
+  .phase-section[data-phase="1"] .phase-icon { background: var(--cyan-dim); }
+  .phase-section[data-phase="1"] .phase-number { color: var(--cyan); }
+  .phase-section[data-phase="1"] .phase-title { color: var(--cyan); }
+
+  .phase-section[data-phase="2"] .phase-icon { background: var(--amber-dim); }
+  .phase-section[data-phase="2"] .phase-number { color: var(--amber); }
+  .phase-section[data-phase="2"] .phase-title { color: var(--amber); }
+
+  .phase-section[data-phase="3"] .phase-icon { background: var(--purple-dim); }
+  .phase-section[data-phase="3"] .phase-number { color: var(--purple); }
+  .phase-section[data-phase="3"] .phase-title { color: var(--purple); }
+
+  .phase-section[data-phase="4"] .phase-icon { background: var(--red-dim); }
+  .phase-section[data-phase="4"] .phase-number { color: var(--red); }
+  .phase-section[data-phase="4"] .phase-title { color: var(--red); }
+
+  /* Quest cards */
+  .quest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+  }
+
+  .quest-list.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+
+  .quest {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .quest:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-glow);
+  }
+
+  .quest.completed {
+    opacity: 0.5;
+    border-color: var(--green-dim);
+  }
+
+  .quest.completed .quest-check {
+    background: var(--green);
+    border-color: var(--green);
+    color: var(--bg-deep);
+  }
+
+  .quest-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: transparent;
+  }
+
+  .quest-body {
+    flex: 1;
+  }
+
+  .quest-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .quest-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .quest-reward {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .phase-section[data-phase="0"] .quest-reward { background: var(--green-dim); color: var(--green); }
+  .phase-section[data-phase="1"] .quest-reward { background: var(--cyan-dim); color: var(--cyan); }
+  .phase-section[data-phase="2"] .quest-reward { background: var(--amber-dim); color: var(--amber); }
+  .phase-section[data-phase="3"] .quest-reward { background: var(--purple-dim); color: var(--purple); }
+  .phase-section[data-phase="4"] .quest-reward { background: var(--red-dim); color: var(--red); }
+
+  /* Intel box */
+  .intel-box {
+    background: linear-gradient(135deg, var(--bg-card), #0d0d16);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text-mid);
+  }
+
+  .intel-box .label {
+    color: var(--green);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .intel-box strong {
+    color: var(--text);
+  }
+
+  /* Progress bar at bottom */
+  .progress-dock {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 15, 0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 100;
+    opacity: 0;
+    animation: fadeIn 0.6s ease 2s forwards;
+  }
+
+  .progress-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    border-radius: 3px;
+    transition: width 0.6s ease;
+    box-shadow: 0 0 12px var(--green-dim);
+  }
+
+  .progress-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--green);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* The math section */
+  .math-section {
+    margin-top: 32px;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: slideUp 0.6s ease 2.2s forwards;
+  }
+
+  .math-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .math-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .math-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+
+  .math-card .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .math-card .value {
+    font-size: 28px;
+    font-weight: 900;
+    margin-top: 4px;
+  }
+
+  .math-card .sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .math-card.income .value { color: var(--green); }
+  .math-card.rent .value { color: var(--red); }
+  .math-card.runway .value { color: var(--amber); }
+  .math-card.bounty .value { color: var(--cyan); }
+
+  /* Identity section */
+  .identity {
+    text-align: center;
+    padding: 40px 20px;
+    margin-bottom: 30px;
+    opacity: 0;
+    animation: fadeIn 0.8s ease 2.4s forwards;
+  }
+
+  .identity-text {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-style: italic;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.8;
+  }
+
+  .identity-text em {
+    color: var(--green);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .title { font-size: 36px; }
+    .stats-bar { flex-direction: column; gap: 8px; }
+    .math-grid { grid-template-columns: 1fr; }
+    .header, .stats-bar, .content { padding-left: 20px; padding-right: 20px; }
+    .progress-dock { padding: 12px 20px; }
+  }
+
+  /* Bottom spacer for fixed dock */
+  .bottom-spacer { height: 60px; }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="header">
+  <div class="codename">CODENAME: GHOST PROTOCOL</div>
+  <div class="title">Bounty Campaign</div>
+  <div class="subtitle">Solo reconnaissance. Find the crack. Get paid. Move on.</div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat runway">
+    <div class="stat-label">Monthly Runway</div>
+    <div class="stat-value">$1,160</div>
+  </div>
+  <div class="stat target">
+    <div class="stat-label">First Bounty Target</div>
+    <div class="stat-value">$500</div>
+  </div>
+  <div class="stat phase">
+    <div class="stat-label">Current Phase</div>
+    <div class="stat-value" id="currentPhase">GHOST SETUP</div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- THE MATH -->
+  <div class="math-section">
+    <div class="math-title">⚡ The Arithmetic That Kills The Dream Doubt</div>
+    <div class="math-grid">
+      <div class="math-card income">
+        <div class="label">Whole Foods Income</div>
+        <div class="value">$2,200</div>
+        <div class="sub">/month after tax</div>
+      </div>
+      <div class="math-card rent">
+        <div class="label">Rent</div>
+        <div class="value">$1,040</div>
+        <div class="sub">/month ($260 × 4)</div>
+      </div>
+      <div class="math-card runway">
+        <div class="label">Operating Budget</div>
+        <div class="value">$1,160</div>
+        <div class="sub">your runway to build</div>
+      </div>
+      <div class="math-card bounty">
+        <div class="label">1 Bounty Find</div>
+        <div class="value">= 1mo rent</div>
+        <div class="sub">$500-1000 in hours, not shifts</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 0 -->
+  <div class="phase-section" data-phase="0">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-icon">🔧</div>
+      <div class="phase-title-group">
+        <div class="phase-number">Phase 00 — Tonight</div>
+        <div class="phase-title">Ghost Setup</div>
+      </div>
+      <div class="phase-toggle open">▸</div>
+    </div>
+    <div class="quest-list">
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Install Burp Suite Community on CachyOS</div>
+          <div class="quest-desc">portswigger.net/burp/communitydownload → Linux 64-bit. Install. Launch once. Close.</div>
+        </div>
+        <div class="quest-reward">+TOOL</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Create HackerOne account</div>
+          <div class="quest-desc">hackerone.com/users/sign_up → real email → complete profile. You are now registered as a hunter.</div>
+        </div>
+        <div class="quest-reward">+IDENTITY</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Configure Firefox → Burp Proxy</div>
+          <div class="quest-desc">Firefox > Settings > Network > Manual Proxy: 127.0.0.1:8080. Install Burp CA cert. You can now see all traffic.</div>
+        </div>
+        <div class="quest-reward">+VISION</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Intercept your first HTTP request</div>
+          <div class="quest-desc">Turn on Intercept in Burp → visit any website → see the raw request. Read it. You just saw behind the wall.</div>
+        </div>
+        <div class="quest-reward">+SIGHT</div>
+      </div>
+      <div class="intel-box">
+        <div class="label">📡 Intel</div>
+        Every website you visit sends <strong>requests your browser never shows you</strong>. Burp Suite makes you see them all. This is the foundation — before you hack anything, you learn to <strong>see traffic like the system sees it</strong>.
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase-section" data-phase="1">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-icon">🔍</div>
+      <div class="phase-title-group">
+        <div class="phase-number">Phase 01 — Days 1-3</div>
+        <div class="phase-title">Learn to See</div>
+      </div>
+      <div class="phase-toggle">▸</div>
+    </div>
+    <div class="quest-list collapsed">
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Complete PortSwigger Web Security Academy — "What is a vulnerability?"</div>
+          <div class="quest-desc">portswigger.net/web-security → Start with the intro modules. Free. Built by the Burp creators.</div>
+        </div>
+        <div class="quest-reward">+KNOWLEDGE</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Complete the IDOR lab</div>
+          <div class="quest-desc">PortSwigger Academy → Access Control → "Insecure direct object references" lab. Change an ID in a URL. See another user's data. Feel the power.</div>
+        </div>
+        <div class="quest-reward">+FIRST BLOOD</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Complete 3 XSS labs</div>
+          <div class="quest-desc">PortSwigger Academy → Cross-site scripting → Complete 3 "Apprentice" difficulty labs. You're injecting code into websites now.</div>
+        </div>
+        <div class="quest-reward">+OFFENSE</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Read 5 disclosed bounty reports on HackerOne</div>
+          <div class="quest-desc">hackerone.com/hacktivity → Filter: "Disclosed" → Read the bug, the impact, the payout. This is reconnaissance on the game itself.</div>
+        </div>
+        <div class="quest-reward">+RECON</div>
+      </div>
+      <div class="intel-box">
+        <div class="label">📡 Intel</div>
+        IDOR and XSS are the <strong>#1 and #2 most common bounty-paid vulnerabilities</strong>. Hunters make thousands finding these in production apps every week. You're not learning theory — you're learning <strong>the exact bugs that pay</strong>.
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase-section" data-phase="2">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-icon">🎯</div>
+      <div class="phase-title-group">
+        <div class="phase-number">Phase 02 — Days 4-7</div>
+        <div class="phase-title">First Hunt</div>
+      </div>
+      <div class="phase-toggle">▸</div>
+    </div>
+    <div class="quest-list collapsed">
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Pick ONE target program on HackerOne</div>
+          <div class="quest-desc">Filter: public programs → web apps → bounties $500+ minimum. Read the scope. Understand what's allowed. This is YOUR target.</div>
+        </div>
+        <div class="quest-reward">+TARGET</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Create 2 accounts on the target</div>
+          <div class="quest-desc">Account A (normal user) and Account B (normal user). You'll test what A can see of B's data. This is how you find access control bugs.</div>
+        </div>
+        <div class="quest-reward">+SETUP</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Map every feature through Burp</div>
+          <div class="quest-desc">Click every button, visit every page, use every feature — all through Burp. Your HTTP History tab will fill up. This is your treasure map.</div>
+        </div>
+        <div class="quest-reward">+MAP</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Test 10 endpoints for IDOR</div>
+          <div class="quest-desc">Find URLs or API calls with IDs. Swap them. Use Account A's session to access Account B's data. If it works — that's a bug. That's money.</div>
+        </div>
+        <div class="quest-reward">+HUNT</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Submit your first report (even if uncertain)</div>
+          <div class="quest-desc">Found something? Write it up: what you did, what happened, what the impact is. Submit on HackerOne. Your first shot fired.</div>
+        </div>
+        <div class="quest-reward">+$$$</div>
+      </div>
+      <div class="intel-box">
+        <div class="label">📡 Intel</div>
+        <strong>You don't need to be an expert to find your first bug.</strong> Most bounties go to hunters who are methodical, not genius. You're testing whether the app properly checks "does this user have permission to see this data?" Most apps fail this check somewhere. Your job is to find where.
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase-section" data-phase="3">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-icon">⚡</div>
+      <div class="phase-title-group">
+        <div class="phase-number">Phase 03 — Weeks 2-4</div>
+        <div class="phase-title">Sharpen the Blade</div>
+      </div>
+      <div class="phase-toggle">▸</div>
+    </div>
+    <div class="quest-list collapsed">
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Complete 10 more PortSwigger labs</div>
+          <div class="quest-desc">Mix of: SSRF, Authentication bypass, SQL injection, Business logic. Each one is a new weapon in your arsenal.</div>
+        </div>
+        <div class="quest-reward">+ARSENAL</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Hunt on 3 different programs</div>
+          <div class="quest-desc">Different targets = different architectures = more pattern exposure. Your brain needs variety to build instinct.</div>
+        </div>
+        <div class="quest-reward">+RANGE</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Read 20 more disclosed reports</div>
+          <div class="quest-desc">Focus on: what made the report good? What was the impact? What was the payout? You're training your eye for value.</div>
+        </div>
+        <div class="quest-reward">+INSTINCT</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Earn your first bounty payout</div>
+          <div class="quest-desc">Any amount. $50. $500. Doesn't matter. Money in exchange for finding a flaw. You're a professional now.</div>
+        </div>
+        <div class="quest-reward">+PROOF</div>
+      </div>
+      <div class="intel-box">
+        <div class="label">📡 Intel</div>
+        This phase is where <strong>most people quit</strong>. They submit 5 reports, get rejected, and leave. You won't — because you're not doing this for fun. You're building a <strong>life</strong>. Every rejection teaches you what "valid" looks like. Stack the lessons.
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase-section" data-phase="4">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-icon">👻</div>
+      <div class="phase-title-group">
+        <div class="phase-number">Phase 04 — Month 2+</div>
+        <div class="phase-title">Ghost Protocol Active</div>
+      </div>
+      <div class="phase-toggle">▸</div>
+    </div>
+    <div class="quest-list collapsed">
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Specialize in one bug class</div>
+          <div class="quest-desc">Pick what your brain is best at finding — IDOR, auth bypass, business logic, SSRF — and go deep. Specialization = higher payouts.</div>
+        </div>
+        <div class="quest-reward">+MASTERY</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Earn $1,000 total in bounties</div>
+          <div class="quest-desc">That's nearly a full month of rent. Earned by seeing what others can't. The math is real now.</div>
+        </div>
+        <div class="quest-reward">+$1K</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Get invited to a private program</div>
+          <div class="quest-desc">Private programs have fewer hunters and bigger payouts. Invites come from reputation. Your signal-to-noise ratio matters.</div>
+        </div>
+        <div class="quest-reward">+ACCESS</div>
+      </div>
+      <div class="quest" onclick="toggleQuest(this)">
+        <div class="quest-check">✓</div>
+        <div class="quest-body">
+          <div class="quest-title">Cross the $5,000 total mark</div>
+          <div class="quest-desc">At this point, bounty hunting isn't supplemental — it's a real income stream. The dream isn't a dream anymore.</div>
+        </div>
+        <div class="quest-reward">+FREEDOM</div>
+      </div>
+      <div class="intel-box">
+        <div class="label">📡 Intel</div>
+        <strong>This is where the breakout happens.</strong> Not because one bug pays $10k (though it might). But because your pattern recognition compounds. Every system you've seen makes the next one more transparent. You're not guessing anymore — you're <strong>seeing through walls</strong>.
+      </div>
+    </div>
+  </div>
+
+  <div class="identity">
+    <div class="identity-text">
+      You're not learning a skill.<br>
+      You're <em>becoming the person</em> who already does this.<br><br>
+      The shelves fund the runway.<br>
+      The runway funds the hunt.<br>
+      The hunt funds the <em>life</em>.
+    </div>
+  </div>
+
+  <div class="bottom-spacer"></div>
+</div>
+
+<!-- Progress Dock -->
+<div class="progress-dock">
+  <div class="progress-label">CAMPAIGN PROGRESS</div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+  </div>
+  <div class="progress-pct" id="progressPct">0%</div>
+</div>
+
+<script>
+  // Quest toggle
+  function toggleQuest(el) {
+    el.classList.toggle('completed');
+    updateProgress();
+    saveState();
+  }
+
+  // Phase toggle
+  function togglePhase(headerEl) {
+    const list = headerEl.nextElementSibling;
+    const toggle = headerEl.querySelector('.phase-toggle');
+    list.classList.toggle('collapsed');
+    toggle.classList.toggle('open');
+  }
+
+  // Progress calculation
+  function updateProgress() {
+    const total = document.querySelectorAll('.quest').length;
+    const done = document.querySelectorAll('.quest.completed').length;
+    const pct = Math.round((done / total) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+
+    // Update phase display
+    const phases = ['GHOST SETUP', 'LEARN TO SEE', 'FIRST HUNT', 'SHARPEN', 'GHOST ACTIVE'];
+    const sections = document.querySelectorAll('.phase-section');
+    let currentPhase = 0;
+    sections.forEach((section, i) => {
+      const quests = section.querySelectorAll('.quest');
+      const completed = section.querySelectorAll('.quest.completed');
+      if (completed.length === quests.length && quests.length > 0) {
+        currentPhase = Math.min(i + 1, phases.length - 1);
+      }
+    });
+    document.getElementById('currentPhase').textContent = phases[currentPhase];
+  }
+
+  // Save/Load state with in-memory fallback
+  const memoryStore = {};
+
+  function saveState() {
+    const quests = document.querySelectorAll('.quest');
+    const state = [];
+    quests.forEach((q, i) => {
+      state.push(q.classList.contains('completed'));
+    });
+    try {
+      memoryStore['ghost-protocol-state'] = JSON.stringify(state);
+    } catch(e) {}
+  }
+
+  function loadState() {
+    try {
+      const raw = memoryStore['ghost-protocol-state'];
+      if (!raw) return;
+      const state = JSON.parse(raw);
+      const quests = document.querySelectorAll('.quest');
+      state.forEach((completed, i) => {
+        if (completed && quests[i]) {
+          quests[i].classList.add('completed');
+        }
+      });
+      updateProgress();
+    } catch(e) {}
+  }
+
+  // Init
+  loadState();
+</script>
+</body>
+</html>
